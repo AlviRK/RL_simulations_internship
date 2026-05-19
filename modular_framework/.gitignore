@@ -1,0 +1,16 @@
+# Python + Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+env/
+
+# Analysis outputs
+02_analysis/simulation/output/
+*.log
+
+
+
+01_code/src/replay/logs/
