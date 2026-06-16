@@ -13,8 +13,6 @@ from affect.confidence import Confidence
 from affect.curiosity import Curiosity
 from affect.expression import Expression
 from affect.impasse_conflict import Conflict
-from affect.uncertainty import Uncertainty
-
 
 
 
@@ -45,7 +43,8 @@ def train_and_save(
         "epsilon": 0.1,    # Exploration rate
         "epsilon_decay": 4.75e-05,  # Decay rate for exploration, before: 2.5e-05
         "epsilon_min": 0.01,  # Minimum exploration rate; alternative 0.01
-        "seed": seed
+        "seed": seed,
+        "defixation_beta": 0.7
     }
 
     # if custom_settings:
@@ -102,8 +101,8 @@ def train_and_save(
         
     confidence = Confidence() if signals else None # because i dont want to reset the count
     conflict = Conflict()
-    uncertainty = Uncertainty()
- 
+    defixation_timer = 0
+
     for episode in range(episodes):
         state = env.reset()
         if signals:
@@ -130,11 +129,9 @@ def train_and_save(
         next_states_buffer = []
         rewards_buffer = []
         td_error_buffer = []
-        events_buffer = []
+        events_buffer = [] 
         conflict_buffer = []
         policy_tendency_buffer = []
-        uncertainty_buffer = []
-
 
         #state counts        
         state_visits = {} 
@@ -158,38 +155,64 @@ def train_and_save(
             #Do agent execution and learning
 
             ## 1. Policy change log 1: Check greedy action before learning (LOGGING ONLY)
-            q_values_before = agent.q_table[state] # Q values before learning
+            q_values_before = agent.q_table[state].copy() # Q values before learning
             greedy_action_before = np.argmax(q_values_before)
             gap_before = np.max(q_values_before) - np.partition(q_values_before, -2)[-2] # best Q-value - second-best Q-value
-            uncertainty_val = uncertainty.update(q_values_before)
-
 
             ## 2. Execution of Action Selection + Update/Learning
-            action, exploratory = agent.action_selection(state)
+            if defixation_timer > 0:
+                q_for_action = agent.q_table[state].copy()
+                beta = settings["defixation_beta"]
+                q_mean = np.mean(q_for_action)
+                q_for_action = q_mean + beta * (q_for_action - q_mean) #we reduce the distance q-mean by 30% in this case, make alternatives actions more competitives.
+                defixation_timer -= 1
+                probs = np.exp(q_for_action) / np.sum(np.exp(q_for_action)) # we make a soft-max
+                action = int(np.random.choice(env.n_actions(), p=probs))
+                exploratory = False
+            else:
+                action, exploratory = agent.action_selection(state)
+            
             next_state, reward, done = env.step(action)
             td_error, td_target = agent.update_rule(state, action, reward, next_state, done)
             conflict.update_td(td_error)
             conflict_val = conflict.get()
-           
+            if conflict_val == 1.0:
+                defixation_timer = 10
+                
+            #agent.epsilon = min(0.30, agent.epsilon + 0.03)
+            #beta1 = settings["defixation_beta"]
+            #q = agent.q_table[state]
+            #q_mean = np.mean(q)
+            #agent.q_table[state] = q_mean + beta1 * (q - q_mean)
+            
+
+
+                                    
+            if conflict_val == 1.0:
+                print("CONFLICT detected", "episode:", episode + 1, "step:", steps)
             
             ## 3. Policy change log 2: Check greedy action after learning (LOGGING ONLY)
-            q_values_after = agent.q_table[state] # Q-values after learning
+            q_values_after = agent.q_table[state].copy() # Q-values after learning
             greedy_action_after = np.argmax(q_values_after)
             gap_after = np.max(q_values_after) - np.partition(q_values_after, -2) [-2] # best Q-value - second-best Q-value
-            policy_tendency_shift = int(gap_after < gap_before)
-
 
 
             ## 4. Policy change log (LOGGING ONLY)
             policy_changed = int(greedy_action_before != greedy_action_after) # 1 if yes
+            policy_tendency_shift = int(gap_after < gap_before) # if "gap after" smaller, then tendency towards non-dominant pathways
             
 
             #Only do signal simulation ad expression management when we have "emotions" (affect=True)
-            if signals:  
-                insight_val = float(insight.update(td_error))  
+            if signals:
+                #insight_val = float(insight.update(td_error))
+                base_insight = float(insight.update(td_error))
+                if conflict_val ==1.0 and (policy_tendency_shift == 1 or policy_changed== 1):
+                    insight_val = min(1.0, base_insight * 1.25)
+                else:
+                    insight_val = base_insight
                 confidence_val = float(confidence.update(state, action, env.n_actions()))
                 curiosity_val = float(curiosity.update(agent.q_table[state]))
-                expression.update(confidence_val,curiosity_val,insight_val,conflict_val, policy_changed, uncertainty_val)
+                expression.update(confidence_val,curiosity_val,insight_val)
             else:
                 insight_val = 0
                 confidence_val = 0
@@ -245,7 +268,6 @@ def train_and_save(
                 curiosity_buffer.append(float(curiosity_val))
                 conflict_buffer.append(float(conflict_val))
                 policy_tendency_buffer.append(int(policy_tendency_shift))
-                uncertainty_buffer.append(float(uncertainty_val))
 
                 # visitation (by STATE)
                 state_visits[state] = state_visits.get(state, 0) + 1
@@ -308,10 +330,9 @@ def train_and_save(
                 # signals
                 "insight": insight_buffer,                              # Insight signals within an episode
                 "confidence": confidence_buffer,                        # Confidence signals within an episode
-                "curiosity": curiosity_buffer,
+                "curiosity": curiosity_buffer,                          # Curiosity signals within an episode
                 "conflict": conflict_buffer,
                 "policy_tendency_shift": policy_tendency_buffer,
-                "uncertainty": uncertainty_buffer,
                 
 
                 # summaries
@@ -331,13 +352,11 @@ def train_and_save(
                 "state_visits": {str(k): int(v) for k, v in state_visits.items()},
             }
             data["replays"].append(replay_entry)
-            conflict.update_return(total_reward)
-
-            
-            print(f"Episode {episode + 1}: Total Reward: {total_reward}, Steps: {steps}")
-    
 
 
+
+        conflict.update_return(total_reward)
+        print(f"Episode {episode + 1}: Total Reward: {total_reward}, Steps: {steps}")
         
 
 
@@ -358,7 +377,7 @@ def train_and_save(
 
 def main():
     # Define a list of different random seeds to make your paper scientifically rigorous!
-    SEEDS = [42]  #[43, 44, 45, 46]
+    SEEDS = [42, 43, 44, 45, 46]
     #SEEDS = [42] 
     VARIANT = "1"
     
@@ -382,8 +401,8 @@ def main():
             out_file=out_file,
             variant=VARIANT,
             signals=True, 
-            render=True,
-            fps=6
+            render=False,
+            fps=10
         )
 
     print("\n All seeds have finished training!")

@@ -358,3 +358,196 @@ def plot_predictive_validity(all_seeds, exp):
     plt.tight_layout()
     save_dual_plot("13_predictive_validity.png", "validity", exp['id'])
     plt.close()
+
+def plot_conflict_restructuring(all_seeds, exp, env_meta):
+    print("     [4/4] Analyzing Conflict → Restructuring")
+
+    records = []
+    window = 5
+
+    for seed_data in all_seeds:
+        seed_id = seed_data.get("agent", {}).get("settings", {}).get("seed", "unknown")
+
+        for replay in seed_data["replays"]:
+            episode = replay["episode"]
+            conflict = np.array(replay.get("conflict", []), dtype=float)
+            policy_changes = np.array(replay.get("policy_changes", []), dtype=int)
+            tendency_shift = np.array(replay.get("policy_tendency_shift", []), dtype=int)
+
+            n = min(len(conflict), len(policy_changes), len(tendency_shift))
+            restructuring = ((policy_changes[:n] == 1) | (tendency_shift[:n] == 1)).astype(int)
+
+            for t in range(n):
+                if conflict[t] == 1.0:
+                    for rel_t in range(-window, window + 1):
+                        idx = t + rel_t
+                        if 0 <= idx < n:
+                            records.append({
+                                "Seed": seed_id,
+                                "Episode": episode,
+                                "RelativeStep": rel_t,
+                                "Restructuring": restructuring[idx]
+                            })
+
+    if len(records) == 0:
+        print("   -> No conflict events found.")
+        return
+
+    df = pd.DataFrame(records)
+
+    plt.figure(figsize=(8, 5))
+    sns.lineplot(
+        data=df,
+        x="RelativeStep",
+        y="Restructuring",
+        marker="o",
+        errorbar=("ci", 95)
+    )
+
+    plt.axvline(0, color="red", linestyle="--", label="Conflict onset")
+    plt.axhline(0, color="gray", linestyle="--")
+    plt.title("Restructuring around Conflict")
+    plt.xlabel("Steps relative to conflict")
+    plt.ylabel("P(policy change or tendency shift)")
+    plt.legend()
+
+    save_dual_plot("14_conflict_restructuring_aligned.png", "validity", exp['id'])
+    plt.close()
+
+def plot_insight_around_conflict(all_seeds, exp, env_meta):
+    print("     [x] Analyzing Insight around Conflict")
+
+    records = []
+    window = 5
+
+    for seed_data in all_seeds:
+        seed_id = seed_data.get("agent", {}).get("settings", {}).get("seed", "unknown")
+
+        for replay in seed_data["replays"]:
+            episode = replay["episode"]
+
+            conflict = np.array(replay.get("conflict", []), dtype=float)
+            insight = np.array(replay.get("insight", []), dtype=float)
+
+            n = min(len(conflict), len(insight))
+
+            for t in range(n):
+                if conflict[t] == 1.0:
+                    for rel_t in range(-window, window + 1):
+                        idx = t + rel_t
+                        if 0 <= idx < n:
+                            records.append({
+                                "Seed": seed_id,
+                                "Episode": episode,
+                                "RelativeStep": rel_t,
+                                "Insight": insight[idx]
+                            })
+
+    if len(records) == 0:
+        print("   -> No conflict events found.")
+        return
+
+    df = pd.DataFrame(records)
+
+    plt.figure(figsize=(8, 5))
+    sns.lineplot(
+        data=df,
+        x="RelativeStep",
+        y="Insight",
+        marker="o",
+        errorbar=("ci", 95)
+    )
+
+    plt.axvline(0, color="red", linestyle="--", label="Conflict onset")
+    plt.axhline(0, color="gray", linestyle="--")
+    plt.title("Insight around Conflict")
+    plt.xlabel("Steps relative to conflict")
+    plt.ylabel("Mean insight")
+    plt.legend()
+
+    save_dual_plot("15_insight_around_conflict.png", "validity", exp["id"])
+    plt.close()
+
+
+def plot_insight_memory_advantage_by_phase(all_seeds, exp, env_meta):
+    print("     [x] Testing insight memory advantage by learning phase")
+
+    records = []
+
+    for seed_data in all_seeds:
+        seed_id = seed_data.get("agent", {}).get("settings", {}).get("seed", "unknown")
+        replays = seed_data["replays"]
+        n_replays = len(replays)
+
+        all_insights = []
+        for r in replays:
+            all_insights.extend(r.get("insight", []))
+
+        if len(all_insights) == 0:
+            continue
+
+        high_thr = np.percentile(all_insights, 75)
+        low_thr = np.percentile(all_insights, 25)
+
+        for i, replay in enumerate(replays[:-1]):
+
+            if i < n_replays / 3:
+                phase = "Early"
+            elif i < 2 * n_replays / 3:
+                phase = "Middle"
+            else:
+                phase = "Late"
+
+            states = replay["states"]
+            actions = replay["actions"]
+            insights = replay["insight"]
+
+            for s, a, ins in zip(states, actions, insights):
+
+                if ins >= high_thr:
+                    group = "High insight"
+                elif ins <= low_thr:
+                    group = "Low insight"
+                else:
+                    continue
+
+                reused = None
+
+                for future_replay in replays[i+1:]:
+                    future_states = future_replay["states"]
+                    future_actions = future_replay["actions"]
+
+                    for fs, fa in zip(future_states, future_actions):
+                        if fs == s:
+                            reused = int(fa == a)
+                            break
+
+                    if reused is not None:
+                        break
+
+                if reused is not None:
+                    records.append({
+                        "Seed": seed_id,
+                        "Phase": phase,
+                        "InsightGroup": group,
+                        "Reuse": reused
+                    })
+
+    df = pd.DataFrame(records)
+
+    plt.figure(figsize=(8, 5))
+    sns.barplot(
+        data=df,
+        x="Phase",
+        y="Reuse",
+        hue="InsightGroup",
+        order=["Early", "Middle", "Late"],
+        errorbar=("ci", 95)
+    )
+
+    plt.ylabel("P(reuse same action later)")
+    plt.xlabel("Learning phase")
+    plt.title("Insight Memory Advantage by Learning Phase")
+    plt.legend(title="")
+    save_dual_plot("17_insight_memory_advantage_by_phase.png", "validity", exp["id"])
+    plt.close()

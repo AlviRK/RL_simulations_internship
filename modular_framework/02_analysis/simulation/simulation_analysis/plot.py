@@ -128,6 +128,9 @@ def main():
         va.plot_reward_proportionality(all_seeds, exp)
         va.plot_policy_change_relevance(all_seeds, exp)
         va.plot_predictive_validity(all_seeds, exp)
+        va.plot_conflict_restructuring(all_seeds, exp, env_meta)
+        va.plot_insight_around_conflict(all_seeds, exp, env_meta)
+        va.plot_insight_memory_advantage_by_phase(all_seeds, exp, env_meta)
         
 
         

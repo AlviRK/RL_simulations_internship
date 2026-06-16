@@ -26,6 +26,8 @@ def plot_baseline(all_seeds, exp):
                 "Seed": seed_id
             })
     df = pd.DataFrame(rows)
+    print(df.head())
+    print(df.shape)
 
     # 1. Return Plot
     plt.figure(figsize=(10,6))

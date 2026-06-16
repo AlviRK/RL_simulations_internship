@@ -4,30 +4,45 @@ import math
 class Expression:
 
     def __init__(self):
-        self.confidence=0
-        self.curiosity=0
-        self.insight=0
+        self.confidence = 0
+        self.curiosity = 0
+        self.insight = 0
+        self.conflict = 0
+        self.policy_changed = 0
+        self.uncertainty = 0
 
-    def update(self, con, cur, ins): # expressed affects, not internal affects
-        self.confidence=con
-        self.curiosity=cur
-        self.insight=ins * 3 #scale it so its visible
-         
+    def update(self, con, cur, ins, conflict=0, policy_changed=0, uncertainty=0):
+        self.confidence = con
+        self.curiosity = cur
+        self.insight = ins * 3
+        self.conflict = conflict
+        self.policy_changed = policy_changed
+        self.uncertainty = uncertainty
+
     def render(self, screen, env):
         x = env.current_pos % env.num_cols
         y = env.current_pos // env.num_cols
         size = env.TILE_SIZE
 
-        #Draw the insight builb
-        bulb_size=size*self.insight
-        bulb = pygame.transform.scale(env.image_assets[f"bulb"], (bulb_size, bulb_size))
-        screen.blit(bulb, (x * size + size/2 - bulb_size/2, y * size + size/2 - bulb_size/2))
+        bulb_size = int(size * self.insight)
 
-        #Do the insght delay
-        pygame.time.delay(int(self.insight*100))
+        if bulb_size > 0:
+            bulb = env.image_assets["bulb"].copy()
 
-        #express confidence
+            if self.policy_changed == 1:
+                bulb.fill((0, 255, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            elif self.conflict == 1:
+                bulb.fill((255, 0, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            elif self.uncertainty ==1:
+                bulb.fill((255, 160, 80, 255), special_flags=pygame.BLEND_RGBA_MULT) #(170, 100, 50, 255) == "Brown color"
+          
+            
 
-        #express curiosity
-        
+            bulb = pygame.transform.scale(bulb, (bulb_size, bulb_size))
+            screen.blit(
+                bulb,
+                (x * size + size / 2 - bulb_size / 2,
+                 y * size + size / 2 - bulb_size / 2)
+            )
 
+        pygame.time.delay(int(self.insight * 100))
