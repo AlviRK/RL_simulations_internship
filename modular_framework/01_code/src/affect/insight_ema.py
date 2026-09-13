@@ -2,6 +2,8 @@ from collections import deque
 import numpy as np
 
 
+from collections import deque
+
 class Insight:
     def __init__(self, window=5, decay=0.7):
         self.window = window
@@ -15,13 +17,16 @@ class Insight:
         abs_td = abs(float(td_error))
         self.buffer.append(abs_td)
 
-        self.value = self.decay * self.value + (1 - self.decay) * abs_td #new insight = part of the previous one (70%) + part of the new td error
+        # Combine the previous insight with the current absolute TD error.
+        self.value = self.decay * self.value + (1 - self.decay) * abs_td
+
         self.abs_td_history.append(abs_td)
         self.insight_history.append(self.value)
         return self.value
 
     def get(self):
         return self.value
+
     def reset(self):
         self.buffer.clear()
         self.value = 0.0
