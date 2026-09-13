@@ -258,7 +258,7 @@ class Room1:
             "bulb": load("bulb.png"),
         }
 
-    def render(self, screen):
+    def render(self, screen, *, draw_agent=True):
         
         for cell in range(self.num_cells):
             
@@ -277,9 +277,10 @@ class Room1:
 
             screen.blit(img, ((cell % self.num_cols) * self.tile_size, (1+ (cell // self.num_cols)) * self.tile_size))
 
-        # Draw agent with orientation
-        agent_img = self.image_assets[f"agent_{self.agent_orientation}"]
-        screen.blit(agent_img, (self.current_pos % self.num_cols * self.tile_size, (1+(self.current_pos // self.num_cols)) * self.tile_size))
+        # La animación puede capturar solo el tablero, sin cambiar la posición.
+        if draw_agent:
+            agent_img = self.image_assets[f"agent_{self.agent_orientation}"]
+            screen.blit(agent_img, (self.current_pos % self.num_cols * self.tile_size, (1+(self.current_pos // self.num_cols)) * self.tile_size))
         
 
     def n_actions(self): 
@@ -290,7 +291,6 @@ class Room1:
 
     def sample_action(self): # for testing; sample a random action
         return random.choice(self.actions)
-
 
 
 
