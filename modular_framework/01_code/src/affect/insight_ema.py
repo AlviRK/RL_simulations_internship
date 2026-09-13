@@ -10,21 +10,40 @@ class Insight:
         self.abs_td_history = []
         self.insight_history = []
         self.value = 0.0
+        self.value_pos = 0.0
+        self.value_neg = 0.0 
 
     def update(self, td_error):
-        abs_td = abs(float(td_error))
-        self.buffer.append(abs_td)
+        td_error = (float(td_error))
+        if td_error > 0:
+            td_pos = td_error
+        else:
+            td_pos = 0
 
-        self.value = self.decay * self.value + (1 - self.decay) * abs_td #new insight = part of the previous one (70%) + part of the new td error
-        self.abs_td_history.append(abs_td)
+        if td_error < 0:
+            td_neg = -td_error
+        else:
+            td_neg = 0
+
+        self.value_pos = self.decay * self.value_pos + (1 - self.decay) * td_pos
+        self.value_neg = self.decay * self.value_neg + (1 - self.decay) * td_neg
+        self.value = self.value_pos + self.value_neg
+
+        self.abs_td_history.append(abs(td_error))
         self.insight_history.append(self.value)
         return self.value
+        
 
-    def get(self):
-        return self.value
+    def get_pos(self):
+        return self.value_pos
+    def get_neg(self):
+        return self.value_neg
+    
     def reset(self):
         self.buffer.clear()
         self.value = 0.0
+        self.value_pos = 0.0
+        self.value_neg = 0.0
 
     def clear_histories(self):
         self.abs_td_history.clear()
