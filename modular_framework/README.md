@@ -29,5 +29,3 @@ python -m pip install -r requirements-analysis.txt
 ```
 
 Before running `02_analysis/simulation/simulation_analysis/plot.py`, check its experiment configuration and the log/output paths in `utils.py`. The analysis workflow is separate from the verified live demo and may expect logs from additional experiments.
-
-The old `run_conflict_exploration.py`, `run_conflict_relaxation.py`, `affect/insight.py` and `affect/insight_policy.py` are omitted from this branch. Their earlier versions remain in the development branch and Git history. `uncertainty.py` is retained because `run.py` computes and records it.
