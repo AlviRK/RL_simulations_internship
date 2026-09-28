@@ -43,18 +43,19 @@ class Expression:
             pygame.time.delay(int(self.insight * 100))
 
     @staticmethod
-    def policy_signal(q_before, q_after, action): #decides whether to show green, red, or no animation
+    def policy_signal(q_before, q_after, action): #decide whether to show green, red, or no animation
         
-        best_before = q_before == np.max(q_before) #It compares each value of q_before with the max value and gives True/False
+        best_before = q_before == np.max(q_before) #It compares each value of q_before with the max value [False, True, False, False]
         best_after = q_after == np.max(q_after)
         
-        # Green: there is one preferred action afterward, and the preferred set changed.
+        # Green: there is one preferred action afterward, and the preferred action changed.
         if np.count_nonzero(best_after) == 1 and not np.array_equal(best_before, best_after):
             return int(np.flatnonzero(best_after)[0]), (50, 210, 80), False 
            
         # Red: the action lost value and is no longer preferred.
+        # If action taken had the higher value and does not have it after reward... 
         # There are several potential replacements tied. A unique replacement would already have returned green above!
-        if best_before[action] and not best_after[action] and q_after[action] < q_before[action]: 
+        if best_before[action] and not best_after[action]: 
             return int(action), (230, 60, 60), True
         return None
 
