@@ -1,0 +1,5 @@
+# Live demo: tested with Python 3.13.13.
+numpy==2.4.4
+pygame==2.6.1
+# Compatibility dependency used by this Pygame release.
+setuptools==80.9.0
