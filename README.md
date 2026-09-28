@@ -1,6 +1,6 @@
 # Policy-change animation demo
 
-This `demo` branch is prepared for Joost to run the current robot simulation. It includes the red and green policy-change animations and the insight bulb. The training code, settings and images are the same as in the current `feature/modular-framework` branch; unused experimental scripts have been removed from this branch.
+This `demo` branch includes the red and green policy-change animations and the insight bulb. 
 
 ## Download
 
