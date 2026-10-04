@@ -50,8 +50,4 @@ Here, "preferred" means having the highest learned Q-value in that state. Colors
 
 `uncertainty.py`, confidence, curiosity, SARSA and replay support are retained because the current program uses or imports them. The `02_analysis` folder and existing notebooks are background material, not required to run this demo. See the [framework notes](modular_framework/README.md) for optional analysis dependencies.
 
-## Verification
 
-Checked on macOS with Python 3.13.13, NumPy 2.4.4 and Pygame 2.6.1 in an isolated environment. The checks cover 300 training episodes, unchanged training results, all three animation paths with the included images, and window-close handling. Graphics were tested using an offscreen SDL display; this does not constitute a Windows or Linux desktop test.
-
-Earlier experiments remain available in `feature/modular-framework` and the Git history. This demo does not replace that development branch.
